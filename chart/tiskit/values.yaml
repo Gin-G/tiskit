@@ -1,11 +1,13 @@
 # Defaults for tiskit.
-# CI (build-and-deploy workflow) overwrites image.repository and image.tag on every push to main.
+# CI (build-and-deploy workflow) overwrites image.tag on every push to main.
+# image.repository is static here on purpose: GitHub Actions masks job outputs
+# that contain secret values to empty, so the repo path can't come from secrets.
 
 nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: ""
+  repository: "ncging/tiskit"
   tag: "sha-6d7bf8681f6d"
   pullPolicy: IfNotPresent
 
@@ -71,9 +73,10 @@ ingress:
     clusterIssuer: letsencrypt-prod
   externalDns:
     enabled: true
-    # Set true to have Cloudflare proxy traffic (orange cloud). For mTLS / arbitrary
-    # client certs you may want false.
-    cloudflareProxied: false
+    # The DNS A-record target. Matches the pattern of the rest of this cluster's
+    # ingresses, which point external-dns at the port-forward / tunnel IP rather
+    # than at the Traefik LoadBalancer service.
+    target: "8.44.158.127"
     ttl: "120"
   # Additional annotations merged into the Ingress object.
   annotations: {}
@@ -101,8 +104,10 @@ podDisruptionBudget:
   minAvailable: 1
 
 # oauth2-proxy sidecar deployment (forward-auth gateway).
+# Disabled for the initial cut. Flip to true before exposing real PHI; pre-create
+# the existingSecret in the release namespace first (see comment below).
 oauth2Proxy:
-  enabled: true
+  enabled: false
   image:
     repository: quay.io/oauth2-proxy/oauth2-proxy
     tag: v7.7.1

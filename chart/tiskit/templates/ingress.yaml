@@ -19,18 +19,18 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "tiskit.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels: {{- include "tiskit.labels" . | nindent 4 }}
   annotations:
     {{- if .Values.ingress.certManager.enabled }}
     cert-manager.io/cluster-issuer: {{ .Values.ingress.certManager.clusterIssuer | quote }}
     {{- end }}
     {{- if .Values.ingress.externalDns.enabled }}
-    external-dns.alpha.kubernetes.io/hostname: {{ .Values.ingress.host | quote }}
+    external-dns.alpha.kubernetes.io/target: {{ .Values.ingress.externalDns.target | quote }}
+    {{- if .Values.ingress.externalDns.ttl }}
     external-dns.alpha.kubernetes.io/ttl: {{ .Values.ingress.externalDns.ttl | quote }}
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: {{ .Values.ingress.externalDns.cloudflareProxied | quote }}
     {{- end }}
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
+    {{- end }}
     {{- if $mwRefs }}
     traefik.ingress.kubernetes.io/router.middlewares: {{ join "," $mwRefs | quote }}
     {{- end }}

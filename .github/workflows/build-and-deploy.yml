@@ -24,21 +24,17 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
-      repo: ${{ steps.meta.outputs.repo }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Resolve image metadata
+      - name: Resolve image tag
         id: meta
         run: |
           short_sha="$(git rev-parse --short=12 HEAD)"
-          tag="sha-${short_sha}"
-          repo="${{ secrets.DOCKERHUB_USERNAME }}/${IMAGE_NAME}"
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          echo "repo=${repo}" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-${short_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -52,6 +48,9 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # The image repo is built here from a secret. We do NOT expose it as a job
+      # output — GitHub masks outputs that contain secret values to empty, which
+      # was breaking the chart bump (repository: "").
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -62,8 +61,8 @@ jobs:
           provenance: true
           sbom: true
           tags: |
-            ${{ steps.meta.outputs.repo }}:${{ steps.meta.outputs.tag }}
-            ${{ steps.meta.outputs.repo }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -84,22 +83,20 @@ jobs:
       - name: Update image tag in values.yaml
         env:
           NEW_TAG: ${{ needs.build.outputs.tag }}
-          NEW_REPO: ${{ needs.build.outputs.repo }}
         run: |
           set -euo pipefail
-          file="chart/tiskit/values.yaml"
-          # Replace `tag: "..."` on the line under `image:` and the repository line.
           python - <<'PY'
-          import os, re, pathlib, sys
+          import os, re, pathlib
           path = pathlib.Path("chart/tiskit/values.yaml")
           text = path.read_text()
           new_tag = os.environ["NEW_TAG"]
-          new_repo = os.environ["NEW_REPO"]
-          text = re.sub(r'(\n  repository:\s*)"[^"]*"', f'\\1"{new_repo}"', text, count=1)
-          text = re.sub(r'(\n  tag:\s*)"[^"]*"', f'\\1"{new_tag}"', text, count=1)
+          # Match the first `  tag: "..."` under the top-level `image:` block.
+          text, n = re.subn(r'(\n  tag:\s*)"[^"]*"', f'\\1"{new_tag}"', text, count=1)
+          if n == 0:
+              raise SystemExit("Failed to locate image.tag in values.yaml")
           path.write_text(text)
           PY
-          git diff -- "$file" || true
+          git diff -- chart/tiskit/values.yaml || true
 
       - name: Commit and push bump
         env:
