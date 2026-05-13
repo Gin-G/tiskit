@@ -46,7 +46,7 @@ spec:
             - name: LOG_LEVEL
               value: {{ .Values.app.logLevel | quote }}
             - name: MAX_UPLOAD_BYTES
-              value: {{ .Values.maxUploadBytes | quote }}
+              value: {{ .Values.maxUploadBytes | int64 | quote }}
             {{- with .Values.app.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
