@@ -1,0 +1,96 @@
+{{- if .Values.oauth2Proxy.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tiskit.oauth2.fullname" . }}
+  labels: {{- include "tiskit.oauth2.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.oauth2Proxy.replicaCount }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels: {{- include "tiskit.oauth2.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "tiskit.oauth2.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 2000
+        runAsGroup: 2000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: oauth2-proxy
+          image: "{{ .Values.oauth2Proxy.image.repository }}:{{ .Values.oauth2Proxy.image.tag }}"
+          imagePullPolicy: {{ .Values.oauth2Proxy.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+          args:
+            - --http-address=0.0.0.0:{{ .Values.oauth2Proxy.port }}
+            - --provider={{ .Values.oauth2Proxy.provider }}
+            - --oidc-issuer-url={{ .Values.oauth2Proxy.oidcIssuerUrl }}
+            - --redirect-url=https://{{ .Values.ingress.host }}/oauth2/callback
+            - --scope={{ .Values.oauth2Proxy.scope }}
+            - --cookie-domain={{ .Values.oauth2Proxy.cookieDomain }}
+            - --cookie-secure={{ .Values.oauth2Proxy.cookieSecure }}
+            - --cookie-httponly=true
+            - --cookie-samesite={{ .Values.oauth2Proxy.cookieSameSite }}
+            - --cookie-expire={{ .Values.oauth2Proxy.cookieExpire }}
+            - --cookie-refresh={{ .Values.oauth2Proxy.cookieRefresh }}
+            - --reverse-proxy=true
+            - --skip-provider-button=true
+            - --pass-access-token=false
+            - --pass-authorization-header=true
+            - --set-xauthrequest=true
+            - --set-authorization-header=true
+            - --whitelist-domain={{ .Values.ingress.host }}
+            - --upstream={{ .Values.oauth2Proxy.upstream }}
+            - --silence-ping-logging=true
+            {{- range .Values.oauth2Proxy.emailDomains }}
+            - --email-domain={{ . }}
+            {{- end }}
+            {{- if .Values.oauth2Proxy.allowedGroups }}
+            - --allowed-groups={{ .Values.oauth2Proxy.allowedGroups }}
+            {{- end }}
+            {{- range .Values.oauth2Proxy.extraArgs }}
+            - {{ . }}
+            {{- end }}
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.oauth2Proxy.existingSecret }}
+                  key: client-id
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.oauth2Proxy.existingSecret }}
+                  key: client-secret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.oauth2Proxy.existingSecret }}
+                  key: cookie-secret
+          ports:
+            - name: http
+              containerPort: {{ .Values.oauth2Proxy.port }}
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 2
+          resources: {{- toYaml .Values.oauth2Proxy.resources | nindent 12 }}
+{{- end }}

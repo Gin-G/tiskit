@@ -1,0 +1,85 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f7f7f8;
+  --fg: #1a1a1a;
+  --muted: #5b5b66;
+  --border: #d6d6dc;
+  --accent: #2451b2;
+  --accent-fg: #fff;
+  --card: #fff;
+  --warn: #b45309;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14141a;
+    --fg: #ececf1;
+    --muted: #9a9aa8;
+    --border: #2c2c36;
+    --accent: #6a8cff;
+    --accent-fg: #0a0a10;
+    --card: #1c1c24;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+header h1 {
+  margin: 0 0 .25rem;
+  font-size: 1.85rem;
+  letter-spacing: -0.01em;
+}
+.lede { color: var(--muted); margin: 0 0 2rem; }
+section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+section h2 { margin: 0 0 1rem; font-size: 1.1rem; }
+form label {
+  display: block;
+  font-size: .85rem;
+  color: var(--muted);
+  margin-bottom: .35rem;
+}
+input[type="file"] {
+  display: block;
+  width: 100%;
+  padding: .65rem;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--fg);
+  margin-bottom: 1rem;
+}
+button {
+  appearance: none;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-fg);
+  padding: .6rem 1.1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+button[disabled] { opacity: .6; cursor: not-allowed; }
+#status { font-size: .9rem; color: var(--muted); margin: .6rem 0 0; min-height: 1.2em; }
+#status.error { color: var(--warn); }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1rem; margin: 0 0 1rem; }
+dt { color: var(--muted); }
+dd { margin: 0; font-variant-numeric: tabular-nums; }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: .45rem .55rem; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 600; }
+#fields-wrap { max-height: 320px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+footer { color: var(--muted); font-size: .8rem; text-align: center; margin-top: 2rem; }

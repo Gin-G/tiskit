@@ -1,0 +1,141 @@
+# Defaults for tiskit.
+# CI (build-and-deploy workflow) overwrites image.repository and image.tag on every push to main.
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: "REPLACE_ME/tiskit"
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+replicaCount: 2
+
+# Hard cap on upload size. Enforced at Traefik (buffering middleware) and inside the app.
+maxUploadBytes: 26214400 # 25 MiB
+
+app:
+  port: 8080
+  logLevel: INFO
+  env: []
+  # extraEnvFrom can reference Secrets containing things like signing keys.
+  extraEnvFrom: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# Pod-level security context (HIPAA hardening).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+
+serviceAccount:
+  create: true
+  # Mounting the SA token is unnecessary for this workload.
+  automountToken: false
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: traefik
+  host: tiskit.nickknows.net
+  tls:
+    enabled: true
+    secretName: tiskit-tls
+  certManager:
+    enabled: true
+    clusterIssuer: letsencrypt-prod
+  externalDns:
+    enabled: true
+    # Set true to have Cloudflare proxy traffic (orange cloud). For mTLS / arbitrary
+    # client certs you may want false.
+    cloudflareProxied: false
+    ttl: "120"
+  # Additional annotations merged into the Ingress object.
+  annotations: {}
+
+traefik:
+  # Enable creation of Traefik Middleware CRs (security headers, body-size limit, forward-auth, error redirect).
+  enabled: true
+  middlewares:
+    securityHeaders: true
+    buffering: true
+    forwardAuth: true
+    authErrors: true
+
+networkPolicy:
+  enabled: true
+  # Namespace where Traefik runs. Used to allow ingress traffic.
+  traefikNamespace: traefik
+  # Allow DNS egress (kube-dns) and HTTPS to OIDC provider.
+  allowDnsEgress: true
+  # Extra egress rules (e.g. to your IdP).
+  extraEgress: []
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# oauth2-proxy sidecar deployment (forward-auth gateway).
+oauth2Proxy:
+  enabled: true
+  image:
+    repository: quay.io/oauth2-proxy/oauth2-proxy
+    tag: v7.7.1
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  port: 4180
+  # The Secret must already exist in the release namespace. Required keys:
+  #   client-id, client-secret, cookie-secret (32 raw bytes, base64-encoded).
+  # Example:
+  #   kubectl create secret generic tiskit-oauth2-proxy \
+  #     --from-literal=client-id=... \
+  #     --from-literal=client-secret=... \
+  #     --from-literal=cookie-secret="$(openssl rand -base64 32 | tr -- '+/' '-_')"
+  existingSecret: tiskit-oauth2-proxy
+  provider: oidc
+  oidcIssuerUrl: "https://CHANGE-ME.example.com"
+  emailDomains:
+    - "*"
+  # Comma-separated allowed groups (empty = any authenticated user).
+  allowedGroups: ""
+  scope: "openid email profile"
+  cookieDomain: tiskit.nickknows.net
+  cookieSecure: true
+  cookieSameSite: lax
+  cookieExpire: "1h"
+  cookieRefresh: "30m"
+  # Pinned upstream is unused (we only run /oauth2/* paths) but oauth2-proxy still requires it.
+  upstream: "static://200"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  extraArgs: []

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>tiskit — PDF template analyzer</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>tiskit</h1>
+      <p class="lede">Upload a PDF template to discover its fillable fields. Files are processed in memory and are never written to disk.</p>
+    </header>
+
+    <section aria-labelledby="upload-heading">
+      <h2 id="upload-heading">Template</h2>
+      <form id="upload-form">
+        <label for="file">PDF template</label>
+        <input type="file" id="file" name="file" accept="application/pdf" required>
+        <button type="submit" id="submit-btn">Analyze</button>
+        <p id="status" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section id="result" hidden aria-labelledby="result-heading">
+      <h2 id="result-heading">Analysis</h2>
+      <dl id="summary"></dl>
+      <h3>Fields</h3>
+      <div id="fields-wrap">
+        <table id="fields-table">
+          <thead>
+            <tr><th>Name</th><th>Type</th><th>Page</th><th>Max len</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      <p>No PDF data is logged or persisted by this service.</p>
+    </footer>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

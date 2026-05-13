@@ -1,0 +1,30 @@
+tiskit deployed.
+
+Host:      https://{{ .Values.ingress.host }}
+Image:     {{ .Values.image.repository }}:{{ .Values.image.tag }}
+
+Pre-flight checklist (HIPAA-relevant):
+
+1. Create the oauth2-proxy Secret in namespace "{{ .Release.Namespace }}" before the deployment can come up:
+
+   kubectl -n {{ .Release.Namespace }} create secret generic {{ .Values.oauth2Proxy.existingSecret }} \
+     --from-literal=client-id=YOUR_CLIENT_ID \
+     --from-literal=client-secret=YOUR_CLIENT_SECRET \
+     --from-literal=cookie-secret="$(openssl rand -base64 32 | tr -- '+/' '-_')"
+
+2. Confirm Traefik's namespace label matches networkPolicy.traefikNamespace
+   (kubectl get ns {{ .Values.networkPolicy.traefikNamespace }} --show-labels).
+   The default NetworkPolicy only admits ingress from that namespace.
+
+3. Confirm cert-manager.io/cluster-issuer "{{ .Values.ingress.certManager.clusterIssuer }}" exists.
+
+4. external-dns will create:
+     {{ .Values.ingress.host }} -> Traefik LB
+     Cloudflare-proxied = {{ .Values.ingress.externalDns.cloudflareProxied }}
+
+5. Verify before sharing the URL:
+     - TLS valid (cert-manager succeeded)
+     - /oauth2/sign_in shows the IdP redirect
+     - Hitting / unauthenticated redirects to /oauth2/sign_in
+     - Anonymous request returns no Set-Cookie except the oauth2-proxy one
+{{ "" }}

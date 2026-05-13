@@ -1,0 +1,12 @@
+{{- if and .Values.traefik.enabled .Values.traefik.middlewares.buffering -}}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "tiskit.fullname" . }}-buffering
+  labels: {{- include "tiskit.labels" . | nindent 4 }}
+spec:
+  buffering:
+    # Cap request size at the proxy as a first line of defense.
+    maxRequestBodyBytes: {{ .Values.maxUploadBytes }}
+    memRequestBodyBytes: {{ .Values.maxUploadBytes }}
+{{- end }}

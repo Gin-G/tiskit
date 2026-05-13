@@ -1,0 +1,17 @@
+{{- if and .Values.traefik.enabled .Values.traefik.middlewares.authErrors .Values.oauth2Proxy.enabled -}}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "tiskit.fullname" . }}-auth-errors
+  labels: {{- include "tiskit.labels" . | nindent 4 }}
+spec:
+  # When forward-auth returns 401/403, redirect the user to the oauth2-proxy
+  # sign-in flow with the original URL preserved as ?rd=.
+  errors:
+    status:
+      - "401-403"
+    service:
+      name: {{ include "tiskit.oauth2.fullname" . }}
+      port: {{ .Values.oauth2Proxy.port }}
+    query: "/oauth2/sign_in?rd={url}"
+{{- end }}

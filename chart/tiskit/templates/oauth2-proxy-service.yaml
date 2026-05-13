@@ -1,0 +1,15 @@
+{{- if .Values.oauth2Proxy.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tiskit.oauth2.fullname" . }}
+  labels: {{- include "tiskit.oauth2.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.oauth2Proxy.port }}
+      targetPort: http
+      protocol: TCP
+  selector: {{- include "tiskit.oauth2.selectorLabels" . | nindent 4 }}
+{{- end }}

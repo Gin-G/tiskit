@@ -1,0 +1,68 @@
+{{- if .Values.ingress.enabled -}}
+{{- $ns := .Release.Namespace -}}
+{{- $mws := list -}}
+{{- if and .Values.traefik.enabled .Values.traefik.middlewares.buffering -}}
+  {{- $mws = append $mws (printf "%s-buffering" (include "tiskit.fullname" .)) -}}
+{{- end -}}
+{{- if and .Values.traefik.enabled .Values.traefik.middlewares.securityHeaders -}}
+  {{- $mws = append $mws (printf "%s-security-headers" (include "tiskit.fullname" .)) -}}
+{{- end -}}
+{{- if and .Values.traefik.enabled .Values.traefik.middlewares.forwardAuth .Values.oauth2Proxy.enabled -}}
+  {{- $mws = append $mws (printf "%s-forward-auth" (include "tiskit.fullname" .)) -}}
+{{- end -}}
+{{- if and .Values.traefik.enabled .Values.traefik.middlewares.authErrors .Values.oauth2Proxy.enabled -}}
+  {{- $mws = append $mws (printf "%s-auth-errors" (include "tiskit.fullname" .)) -}}
+{{- end -}}
+{{- $mwRefs := list -}}
+{{- range $mws -}}{{- $mwRefs = append $mwRefs (printf "%s-%s@kubernetescrd" $ns .) -}}{{- end -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "tiskit.fullname" . }}
+  labels: {{- include "tiskit.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.ingress.certManager.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.certManager.clusterIssuer | quote }}
+    {{- end }}
+    {{- if .Values.ingress.externalDns.enabled }}
+    external-dns.alpha.kubernetes.io/hostname: {{ .Values.ingress.host | quote }}
+    external-dns.alpha.kubernetes.io/ttl: {{ .Values.ingress.externalDns.ttl | quote }}
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: {{ .Values.ingress.externalDns.cloudflareProxied | quote }}
+    {{- end }}
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    {{- if $mwRefs }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ join "," $mwRefs | quote }}
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          {{- if .Values.oauth2Proxy.enabled }}
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "tiskit.oauth2.fullname" . }}
+                port:
+                  number: {{ .Values.oauth2Proxy.port }}
+          {{- end }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "tiskit.fullname" . }}
+                port:
+                  number: {{ .Values.service.port }}
+{{- end }}

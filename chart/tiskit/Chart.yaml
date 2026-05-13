@@ -1,0 +1,14 @@
+apiVersion: v2
+name: tiskit
+description: HIPAA-conscious PDF template analyzer behind Traefik + oauth2-proxy
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+icon: ""
+keywords:
+  - pdf
+  - hipaa
+  - medical
+  - forms
+maintainers:
+  - name: tiskit
