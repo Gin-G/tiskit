@@ -5,8 +5,8 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: "REPLACE_ME/tiskit"
-  tag: "latest"
+  repository: ""
+  tag: "sha-6d7bf8681f6d"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
