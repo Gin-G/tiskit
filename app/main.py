@@ -71,7 +71,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         )
         h["X-Robots-Tag"] = "noindex, nofollow"
         # Don't leak framework identity
-        h.pop("server", None)
+        if "server" in h:
+            del h["server"]
         return response
 
 
