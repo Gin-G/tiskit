@@ -8,7 +8,7 @@ fullnameOverride: ""
 
 image:
   repository: "ncging/tiskit"
-  tag: "sha-97baf98aa809"
+  tag: "sha-edcdbfb4afd8"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
