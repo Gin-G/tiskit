@@ -70,7 +70,7 @@ ingress:
     secretName: tiskit-tls
   certManager:
     enabled: true
-    clusterIssuer: letsencrypt-prod
+    clusterIssuer: letsencrypt-cloudflare
   externalDns:
     enabled: true
     # The DNS A-record target. Matches the pattern of the rest of this cluster's
