@@ -147,11 +147,12 @@ async def analyze_template(request: Request, file: UploadFile = File(...)):
         del data
 
     log.info(
-        "analyze_ok rid=%s pages=%s fields=%s has_form=%s",
+        "analyze_ok rid=%s pages=%s fields=%s has_form=%s form_kind=%s",
         rid,
         result["page_count"],
         result["field_count"],
         result["has_acroform"],
+        result["form_kind"],
     )
     # Add a per-response nonce so the client can correlate without us logging anything sensitive.
     result["nonce"] = secrets.token_urlsafe(8)

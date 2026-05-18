@@ -78,6 +78,65 @@ def _locate_field_page(reader: PdfReader, field_obj: Any) -> tuple[int | None, l
     return None, None
 
 
+def _catalog_form_info(reader: PdfReader) -> dict[str, Any]:
+    """Inspect the document catalog for form-related entries.
+
+    Distinguishes flat PDFs, XFA forms, and empty/malformed AcroForm
+    dictionaries — all three look identical when get_fields() returns
+    nothing, so a caller can't otherwise tell why.
+    """
+    info: dict[str, Any] = {
+        "has_acroform_dict": False,
+        "has_xfa": False,
+        "acroform_field_array_count": 0,
+        "need_appearances": False,
+    }
+    try:
+        root = reader.trailer["/Root"]
+    except Exception:
+        return info
+
+    if "/AcroForm" not in root:
+        return info
+    try:
+        acroform = root["/AcroForm"]
+    except Exception:
+        return info
+
+    info["has_acroform_dict"] = True
+
+    if "/XFA" in acroform:
+        info["has_xfa"] = True
+
+    if "/Fields" in acroform:
+        try:
+            info["acroform_field_array_count"] = len(acroform["/Fields"])
+        except Exception:
+            pass
+
+    if "/NeedAppearances" in acroform:
+        try:
+            info["need_appearances"] = bool(acroform["/NeedAppearances"])
+        except Exception:
+            pass
+
+    return info
+
+
+def _classify_form(form_info: dict[str, Any], detected_field_count: int) -> str:
+    has_xfa = form_info["has_xfa"]
+    has_acro = form_info["has_acroform_dict"]
+    if detected_field_count > 0 and has_xfa:
+        return "acroform+xfa"
+    if detected_field_count > 0:
+        return "acroform"
+    if has_xfa:
+        return "xfa"
+    if has_acro:
+        return "empty_acroform"
+    return "none"
+
+
 def analyze_pdf_template(data: bytes) -> dict[str, Any]:
     try:
         reader = PdfReader(io.BytesIO(data), strict=False)
@@ -121,10 +180,15 @@ def analyze_pdf_template(data: bytes) -> dict[str, Any]:
             )
         )
 
+    form_info = _catalog_form_info(reader)
+    form_kind = _classify_form(form_info, len(fields))
+
     return {
         "page_count": len(pages),
         "pages": pages,
         "has_acroform": bool(fields),
         "field_count": len(fields),
         "fields": [f.to_dict() for f in fields],
+        "form_kind": form_kind,
+        **form_info,
     }

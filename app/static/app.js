@@ -12,13 +12,33 @@
     statusEl.classList.toggle('error', !!isError);
   }
 
+  const FORM_LABEL = {
+    'acroform': 'AcroForm',
+    'acroform+xfa': 'AcroForm (with XFA layer)',
+    'xfa': 'XFA only — fields not enumerable',
+    'empty_acroform': 'AcroForm dictionary present but empty',
+    'none': 'No form layer',
+  };
+
+  const EMPTY_FIELDS_MSG = {
+    'xfa': 'This PDF uses XFA (Adobe LiveCycle dynamic forms). pypdf cannot enumerate XFA fields. Re-export as a standard AcroForm in Acrobat (Prepare Form), or fill via coordinate overlay.',
+    'empty_acroform': 'AcroForm dictionary is present but contains no fields. The form may be malformed or stripped during export.',
+    'none': 'No form layer detected. This template needs coordinate-based filling (manual mapping or OCR).',
+  };
+
   function renderSummary(r) {
     summaryEl.innerHTML = '';
     const rows = [
       ['Pages', r.page_count],
-      ['Form (AcroForm)', r.has_acroform ? 'yes' : 'no'],
+      ['Form type', FORM_LABEL[r.form_kind] || r.form_kind || 'unknown'],
       ['Fields detected', r.field_count],
     ];
+    if (r.acroform_field_array_count && r.acroform_field_array_count !== r.field_count) {
+      rows.push(['/Fields array entries', r.acroform_field_array_count]);
+    }
+    if (r.need_appearances) {
+      rows.push(['NeedAppearances', 'yes']);
+    }
     for (const [k, v] of rows) {
       const dt = document.createElement('dt'); dt.textContent = k;
       const dd = document.createElement('dd'); dd.textContent = v;
@@ -26,13 +46,14 @@
     }
   }
 
-  function renderFields(fields) {
+  function renderFields(fields, result) {
     tbody.innerHTML = '';
     if (!fields.length) {
       const tr = document.createElement('tr');
       const td = document.createElement('td');
       td.colSpan = 4;
-      td.textContent = 'No AcroForm fields detected. This template likely needs coordinate-based filling.';
+      td.textContent = EMPTY_FIELDS_MSG[result.form_kind]
+        || 'No AcroForm fields detected.';
       td.style.color = 'var(--muted)';
       tr.appendChild(td);
       tbody.appendChild(tr);
@@ -74,7 +95,7 @@
       }
       const data = await res.json();
       renderSummary(data);
-      renderFields(data.fields || []);
+      renderFields(data.fields || [], data);
       resultEl.hidden = false;
       setStatus('Done.');
     } catch (err) {

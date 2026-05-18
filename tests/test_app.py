@@ -71,3 +71,30 @@ def test_rejects_pdf_without_magic_bytes(client: TestClient) -> None:
         files={"file": ("x.pdf", b"garbage", "application/pdf")},
     )
     assert r.status_code == 415
+
+
+@pytest.fixture
+def flat_pdf_bytes() -> bytes:
+    """A minimal valid PDF with one blank page and no form layer."""
+    from io import BytesIO
+
+    from pypdf import PdfWriter
+
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    buf = BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+def test_analyze_flat_pdf_reports_none(flat_pdf_bytes: bytes) -> None:
+    """A flat PDF must surface form_kind='none' so the UI can explain why."""
+    from pdf_analyzer import analyze_pdf_template
+
+    result = analyze_pdf_template(flat_pdf_bytes)
+    assert result["page_count"] == 1
+    assert result["form_kind"] == "none"
+    assert result["has_acroform_dict"] is False
+    assert result["has_xfa"] is False
+    assert result["field_count"] == 0
+    assert result["acroform_field_array_count"] == 0
